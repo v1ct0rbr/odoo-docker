@@ -1,0 +1,54 @@
+services:
+  odoo-postgresql:
+    image: "postgres:16-alpine"
+    volumes:
+      - "postgresql-data:/var/lib/postgresql/data"
+
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - TZ=$TZ
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "pg_isready -U $${POSTGRES_USER} -d postgres"
+      interval: 5s
+      timeout: 20s
+      retries: 10
+
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    environment:
+      - HOST=odoo-postgresql
+      - USER=$POSTGRES_USER
+      - PASSWORD=$POSTGRES_PASSWORD
+      - PROXY_MODE=$PROXY_MODE
+      - TZ=$TZ
+    depends_on:
+      - odoo-postgresql
+
+    volumes:
+      - "odoo-web-data:/var/lib/odoo"
+    ports:
+      - "8069:8069"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - "-f"
+        - "http://127.0.0.1:8069"
+      interval: 2s
+      timeout: 10s
+      retries: 30
+
+volumes:
+  odoo-web-data:
+    driver: local
+  postgresql-data:
+    driver: local
